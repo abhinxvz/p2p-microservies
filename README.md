@@ -95,3 +95,13 @@ Open `file-transfer-service/test-client.html` in multiple browser windows to tes
 4. Accept/reject incoming transfers
 
 See `file-transfer-service/README.md` for detailed API documentation.
+
+
+## Features
+
+- Service discovery and registration with Eureka
+- API Gateway routing and load balancing
+- Centralized configuration management
+- Real-time P2P file transfer using WebSockets
+- RESTful APIs for user and product management
+- Microservices communication patterns
