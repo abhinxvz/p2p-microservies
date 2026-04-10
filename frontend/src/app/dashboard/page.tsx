@@ -1,9 +1,7 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import UserDashboard from '@/components/UserDashboard';
-import ProductDashboard from '@/components/ProductDashboard';
-import FileTransferDashboard from '@/components/FileTransferDashboard';
+import { FileTransferDashboard } from '@/components/FileTransferDashboard';
 import { ModeToggle } from '@/components/mode-toggle';
 import { Sparkles } from 'lucide-react';
+import FileTransferDashboardDefault from '@/components/FileTransferDashboard';
 
 export default function Home() {
   return (
@@ -16,10 +14,10 @@ export default function Home() {
               <span className="p-3 bg-white dark:bg-[#111113] rounded-2xl shadow-xl dark:shadow-none border border-zinc-200 dark:border-zinc-800">
                 <Sparkles className="w-10 h-10 text-primary" />
               </span>
-              P2P Control Center
+              Peerlink Control Center
             </h1>
             <p className="mt-4 text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl font-medium">
-              Your hub to share files securely, manage your team, and organize store products.
+              Your dedicated local hub to transfer massive files securely and blazing fast.
             </p>
           </div>
           <div className="mt-8 md:mt-0 flex items-center gap-4">
@@ -34,36 +32,8 @@ export default function Home() {
           </div>
         </header>
 
-        <main>
-          <Tabs defaultValue="file-transfer" className="space-y-10">
-            <div className="flex justify-center">
-              <TabsList className="bg-white dark:bg-[#111113] border border-zinc-200 dark:border-zinc-800 shadow-xl dark:shadow-none p-2 rounded-xl h-auto gap-2">
-                <TabsTrigger value="file-transfer" className="rounded-lg px-8 py-3 text-base font-bold data-[state=active]:bg-primary data-[state=active]:text-[#09090b] transition-all">
-                  File Transfers
-                </TabsTrigger>
-                <TabsTrigger value="users" className="rounded-lg px-8 py-3 text-base font-bold data-[state=active]:bg-primary data-[state=active]:text-[#09090b] transition-all">
-                  Team Members
-                </TabsTrigger>
-                <TabsTrigger value="products" className="rounded-lg px-8 py-3 text-base font-bold data-[state=active]:bg-primary data-[state=active]:text-[#09090b] transition-all">
-                  Store Items
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <div className="min-h-[500px] mt-8">
-              <TabsContent value="file-transfer" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <FileTransferDashboard />
-              </TabsContent>
-              
-              <TabsContent value="users" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <UserDashboard />
-              </TabsContent>
-
-              <TabsContent value="products" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <ProductDashboard />
-              </TabsContent>
-            </div>
-          </Tabs>
+        <main className="mt-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <FileTransferDashboardDefault />
         </main>
       </div>
     </div>
