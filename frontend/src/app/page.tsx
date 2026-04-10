@@ -61,22 +61,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Feature 2 - Tall component */}
-          <div className="bg-white dark:bg-[#111113] rounded-3xl p-10 border border-zinc-200 dark:border-zinc-800/80 shadow-2xl flex flex-col justify-between relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-[100px]"></div>
-             <div>
-               <h3 className="text-6xl font-black mb-2 text-primary">20+</h3>
-               <p className="font-bold text-zinc-900 dark:text-zinc-300">Active Team Members</p>
-             </div>
-             <div className="my-8">
-               <h3 className="text-6xl font-black mb-2 text-primary">500+</h3>
-               <p className="font-bold text-zinc-900 dark:text-zinc-300">Files Shared Daily</p>
-             </div>
-             <div>
-               <h3 className="text-6xl font-black mb-2 text-primary">10ms</h3>
-               <p className="font-bold text-zinc-900 dark:text-zinc-300">Instant Delivery</p>
-             </div>
-          </div>
+
 
           {/* Feature 3 */}
           <div className="bg-primary rounded-3xl p-10 shadow-2xl flex flex-col items-start justify-end text-[#09090b] relative overflow-hidden min-h-[300px]">
@@ -86,7 +71,7 @@ export default function LandingPage() {
           </div>
 
           {/* Feature 4 */}
-          <div className="md:col-span-2 bg-white dark:bg-[#111113] rounded-3xl p-10 border border-zinc-200 dark:border-zinc-800/80 shadow-2xl flex items-center justify-between">
+          <div className="md:col-span-3 bg-white dark:bg-[#111113] rounded-3xl p-10 border border-zinc-200 dark:border-zinc-800/80 shadow-2xl flex items-center justify-between">
             <div className="max-w-md">
               <h3 className="text-3xl font-black tracking-tight mb-4">Structural Store</h3>
               <p className="text-lg text-zinc-500 dark:text-zinc-400 font-medium">Create items, track prices, and instantly update your entire catalogue across the network.</p>
