@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { networkService } from '@/services/api';
 
 const CHUNK_SIZE = 64 * 1024; // 64 KB chunks for WebRTC DataChannel optimal transfer
+const BUFFERED_AMOUNT_LOW_THRESHOLD = 1 * 1024 * 1024;  // 1 MB — resume sending when buffer drains to this
+const MAX_BUFFERED_AMOUNT = 16 * 1024 * 1024;            // 16 MB — pause sending when buffer exceeds this
 
 type FileTransferMetadata = {
   fileName: string;
@@ -24,7 +26,7 @@ export function useWebRTC(currentUserId: string) {
     if (!currentUserId) return;
 
     // Connect to file-transfer-service WebSocket signaling server via API Gateway
-    ws.current = new WebSocket(`ws://localhost:8080/ws?userId=${currentUserId}`);
+    ws.current = new WebSocket(`ws://localhost:8080/file-transfer/ws?userId=${currentUserId}`);
 
     ws.current.onmessage = async (event) => {
       const message = JSON.parse(event.data);
@@ -93,6 +95,7 @@ export function useWebRTC(currentUserId: string) {
 
   const setupDataChannel = (peerId: string, channel: RTCDataChannel) => {
     channel.binaryType = 'arraybuffer';
+    channel.bufferedAmountLowThreshold = BUFFERED_AMOUNT_LOW_THRESHOLD;
     
     channel.onopen = () => {
       channels.current.set(peerId, channel);
@@ -122,13 +125,36 @@ export function useWebRTC(currentUserId: string) {
     sendSignal(targetId, 'offer', pc.localDescription);
   };
 
-  const broadcastChunk = (chunk: ArrayBuffer, targetPeers: string[]) => {
-    targetPeers.forEach(peerId => {
+  /**
+   * Waits until the channel's bufferedAmount drops below MAX_BUFFERED_AMOUNT.
+   * Uses the `onbufferedamountlow` event so we don't busy-wait.
+   */
+  const waitForBufferDrain = (channel: RTCDataChannel): Promise<void> => {
+    if (channel.bufferedAmount < MAX_BUFFERED_AMOUNT) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      const onLow = () => {
+        channel.removeEventListener('bufferedamountlow', onLow);
+        resolve();
+      };
+      channel.addEventListener('bufferedamountlow', onLow);
+    });
+  };
+
+  /**
+   * Broadcasts a chunk to all target peers with backpressure.
+   * For each channel that has a full buffer, waits for it to drain
+   * before sending to avoid the browser silently killing the connection.
+   */
+  const broadcastChunkWithBackpressure = async (chunk: ArrayBuffer, targetPeers: string[]) => {
+    for (const peerId of targetPeers) {
       const channel = channels.current.get(peerId);
       if (channel && channel.readyState === 'open') {
+        await waitForBufferDrain(channel);
         channel.send(chunk);
       }
-    });
+    }
   };
 
   // WebRTC Mesh logic implementation
@@ -137,7 +163,15 @@ export function useWebRTC(currentUserId: string) {
       // 1. Fetch active members in this group from the network service
       const response = await networkService.fetchGroupPeers(groupId);
       const activeMembers = response.data || [];
-      const targetPeerIds = activeMembers.map((p: any) => p.peerId).filter((id: string) => id !== currentUserId);
+      // ActiveContactDTO has { username, sessionIds[] } — target all sessionIds
+      const targetPeerIds: string[] = [];
+      for (const dto of activeMembers) {
+        for (const sid of (dto.sessionIds || [])) {
+          if (sid !== currentUserId) {
+            targetPeerIds.push(sid);
+          }
+        }
+      }
 
       // 2. Initiate simultaneous WebRTC mesh negotiation for all active members
       await Promise.all(targetPeerIds.map((id: string) => connectToPeer(id)));
@@ -159,7 +193,7 @@ export function useWebRTC(currentUserId: string) {
         if (channel?.readyState === 'open') channel.send(metadataStr);
       });
 
-      // Slice and Broadcast
+      // Slice and Broadcast with backpressure
       let offset = 0;
       setTransferProgress(0);
 
@@ -167,13 +201,13 @@ export function useWebRTC(currentUserId: string) {
         const slice = file.slice(offset, offset + CHUNK_SIZE);
         const arrayBuffer = await slice.arrayBuffer();
         
-        broadcastChunk(arrayBuffer, targetPeerIds);
+        await broadcastChunkWithBackpressure(arrayBuffer, targetPeerIds);
         
         offset += CHUNK_SIZE;
         setTransferProgress(Math.min(100, Math.round((offset / file.size) * 100)));
         
         // Yield to event loop to prevent locking the browser UI thread
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
 
       console.log(`Successfully broadcasted ${file.name} to mesh group ${groupId}`);

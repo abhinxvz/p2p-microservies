@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { authService, peerService } from '../services/api';
+import { v4 as uuidv4 } from 'uuid';
 
 function extractUsernameFromToken(token: string): string | null {
   try {
@@ -8,6 +9,20 @@ function extractUsernameFromToken(token: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Returns a stable, per-tab sessionId.
+ * Generated once per browser tab and stored in sessionStorage so it
+ * survives page refreshes but not new tabs.
+ */
+function getOrCreateSessionId(): string {
+  let sessionId = sessionStorage.getItem('peer_session_id');
+  if (!sessionId) {
+    sessionId = uuidv4();
+    sessionStorage.setItem('peer_session_id', sessionId);
+  }
+  return sessionId;
 }
 
 export function useAuth() {
@@ -31,12 +46,12 @@ export function useAuth() {
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      const username = extractUsernameFromToken(token);
-      if (!username) return;
+      const sessionId = sessionStorage.getItem('peer_session_id');
+      if (!sessionId) return;
 
       // navigator.sendBeacon only supports POST, so we use fetch with keepalive
       // for the DELETE method. keepalive ensures the request outlives the page.
-      fetch(`http://localhost:8080/peers/${username}/deregister`, {
+      fetch(`http://localhost:8080/peers/${sessionId}/deregister`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -54,8 +69,9 @@ export function useAuth() {
       const data = await authService.authLogin(username, password);
       window.dispatchEvent(new Event('authStatusChange'));
       // Auto-register as an active peer immediately after login
+      const sessionId = getOrCreateSessionId();
       try {
-        await peerService.registerPeer(username);
+        await peerService.registerPeer(username, sessionId);
       } catch (e) {
         console.warn('Peer registration failed (may already be registered)', e);
       }
@@ -80,10 +96,10 @@ export function useAuth() {
     // Deregister peer BEFORE removing the token — fixes the race condition
     const token = localStorage.getItem('auth_token');
     if (token) {
-      const username = extractUsernameFromToken(token);
-      if (username) {
+      const sessionId = sessionStorage.getItem('peer_session_id');
+      if (sessionId) {
         try {
-          await peerService.deregisterPeer(username);
+          await peerService.deregisterPeer(sessionId);
         } catch {
           // Best-effort; don't block logout if the backend is down
         }
@@ -91,6 +107,7 @@ export function useAuth() {
     }
     // Only now remove the token — the Authorization header was available for the call above
     localStorage.removeItem('auth_token');
+    sessionStorage.removeItem('peer_session_id');
     window.dispatchEvent(new Event('authStatusChange'));
   };
 

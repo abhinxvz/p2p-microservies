@@ -30,13 +30,12 @@ export const authService = {
 
 export const peerService = {
   fetchActivePeers: () => api.get('/peers/active'),
-  registerPeer: (peerId: string) => api.post('/peers/register', {
-    peerId,
-    ipAddress: 'localhost',
-    port: 3000,
+  registerPeer: (username: string, sessionId: string) => api.post('/peers/register', {
+    sessionId,
+    username,
     status: 'ACTIVE',
   }),
-  deregisterPeer: (peerId: string) => api.delete(`/peers/${peerId}/deregister`),
+  deregisterPeer: (sessionId: string) => api.delete(`/peers/${sessionId}/deregister`),
 };
 
 export const networkService = {

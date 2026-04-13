@@ -1,5 +1,6 @@
 package com.microservices.peer.controller;
 
+import com.microservices.peer.dto.ActiveContactDTO;
 import com.microservices.peer.entity.Contact;
 import com.microservices.peer.entity.GroupMember;
 import com.microservices.peer.entity.Peer;
@@ -88,20 +89,23 @@ public class NetworkController {
         return ResponseEntity.ok(group);
     }
 
+    /**
+     * Returns active contacts as ActiveContactDTOs.
+     * Each DTO groups a contact username with all their active sessionIds.
+     */
     @GetMapping("/active")
-    public ResponseEntity<List<Peer>> getActiveContacts(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+    public ResponseEntity<List<ActiveContactDTO>> getActiveContacts(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
         String userId = extractUserId(authHeader);
         List<Contact> contacts = contactRepository.findByUserId(userId);
-        
-        List<Peer> activeContacts = new ArrayList<>();
-        List<Peer> allActivePeers = peerService.getActivePeers();
-        
+
+        List<ActiveContactDTO> activeContacts = new ArrayList<>();
         for (Contact contact : contacts) {
-            for (Peer peer : allActivePeers) {
-                if (peer.getPeerId().equals(contact.getContactUserId())) {
-                    activeContacts.add(peer);
-                    break;
-                }
+            List<Peer> sessions = peerService.getActiveSessionsForUser(contact.getContactUserId());
+            if (!sessions.isEmpty()) {
+                List<String> sessionIds = sessions.stream()
+                        .map(Peer::getSessionId)
+                        .collect(Collectors.toList());
+                activeContacts.add(new ActiveContactDTO(contact.getContactUserId(), sessionIds));
             }
         }
         return ResponseEntity.ok(activeContacts);
@@ -116,19 +120,22 @@ public class NetworkController {
         return ResponseEntity.ok(myGroups);
     }
 
+    /**
+     * Returns active group members as ActiveContactDTOs.
+     */
     @GetMapping("/groups/{groupId}/active")
-    public ResponseEntity<List<Peer>> getActiveGroupMembers(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+    public ResponseEntity<List<ActiveContactDTO>> getActiveGroupMembers(@RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
                                                             @PathVariable Long groupId) {
         List<GroupMember> members = groupMemberRepository.findByGroupId(groupId);
-        List<Peer> activeGroupMembers = new ArrayList<>();
-        List<Peer> allActivePeers = peerService.getActivePeers();
-        
+        List<ActiveContactDTO> activeGroupMembers = new ArrayList<>();
+
         for (GroupMember member : members) {
-            for (Peer peer : allActivePeers) {
-                if (peer.getPeerId().equals(member.getUserId())) {
-                    activeGroupMembers.add(peer);
-                    break;
-                }
+            List<Peer> sessions = peerService.getActiveSessionsForUser(member.getUserId());
+            if (!sessions.isEmpty()) {
+                List<String> sessionIds = sessions.stream()
+                        .map(Peer::getSessionId)
+                        .collect(Collectors.toList());
+                activeGroupMembers.add(new ActiveContactDTO(member.getUserId(), sessionIds));
             }
         }
         return ResponseEntity.ok(activeGroupMembers);
