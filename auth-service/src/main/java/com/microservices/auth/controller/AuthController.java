@@ -48,4 +48,9 @@ public class AuthController {
         service.validateToken(token);
         return ResponseEntity.ok("Token is valid");
     }
+
+    @GetMapping("/exists/{username}")
+    public ResponseEntity<Boolean> userExists(@PathVariable String username) {
+        return ResponseEntity.ok(repository.findByUsername(username).isPresent());
+    }
 }

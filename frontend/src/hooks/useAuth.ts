@@ -78,7 +78,7 @@ export function useAuth() {
       return { success: true, data };
     } catch (error: any) {
       console.error('Login error', error);
-      return { success: false, error: error.response?.data || 'Login failed' };
+      return { success: false, error: typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.error || error.response?.data?.message || 'Login failed') };
     }
   };
 
@@ -88,7 +88,7 @@ export function useAuth() {
       return { success: true };
     } catch (error: any) {
       console.error('Register error', error);
-      return { success: false, error: error.response?.data || 'Registration failed' };
+      return { success: false, error: typeof error.response?.data === 'string' ? error.response.data : (error.response?.data?.error || error.response?.data?.message || 'Registration failed') };
     }
   };
 

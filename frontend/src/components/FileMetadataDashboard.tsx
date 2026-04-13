@@ -36,10 +36,11 @@ export function FileMetadataDashboard() {
   });
 
   const fetchMetadata = async () => {
+    if (typeof window !== 'undefined' && !localStorage.getItem('auth_token')) return;
     setLoading(true);
     try {
       const response = await fileMetadataService.getAllMetadata();
-      setMetadata(response.data);
+      setMetadata(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Failed to fetch metadata:', error);
     } finally {
@@ -49,6 +50,10 @@ export function FileMetadataDashboard() {
 
   useEffect(() => {
     fetchMetadata();
+    // Re-fetch when user logs in
+    const onAuthChange = () => fetchMetadata();
+    window.addEventListener('authStatusChange', onAuthChange);
+    return () => window.removeEventListener('authStatusChange', onAuthChange);
   }, []);
 
   const handleCreate = async () => {

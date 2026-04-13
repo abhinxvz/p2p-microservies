@@ -17,6 +17,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Auto-clear stale tokens on 401 — prevents infinite retry loops
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      const path = error.config?.url || '';
+      // Don't clear token for login/register attempts (those are expected 401s)
+      if (!path.includes('/auth/')) {
+        console.warn('Session expired, logging out.');
+        localStorage.removeItem('auth_token');
+        sessionStorage.removeItem('peer_session_id');
+        window.dispatchEvent(new Event('authStatusChange'));
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const authService = {
   authLogin: async (username: string, password: string) => {
     const response = await api.post('/auth/login', { username, password });
@@ -42,6 +60,10 @@ export const networkService = {
   addContact: (username: string) => api.post(`/network/contacts/${username}`),
   createGroup: (groupName: string, usernames: string[]) => api.post('/network/groups', { groupName, usernames }),
   fetchContactPeers: () => api.get('/network/active'),
+  fetchAllContacts: () => api.get('/network/contacts'),
+  fetchIncomingRequests: () => api.get('/network/requests/incoming'),
+  acceptRequest: (requestId: number) => api.post(`/network/requests/${requestId}/accept`),
+  rejectRequest: (requestId: number) => api.post(`/network/requests/${requestId}/reject`),
   fetchMyGroups: () => api.get('/network/groups/mine'),
   fetchGroupPeers: (groupId: number) => api.get(`/network/groups/${groupId}/active`),
 };
