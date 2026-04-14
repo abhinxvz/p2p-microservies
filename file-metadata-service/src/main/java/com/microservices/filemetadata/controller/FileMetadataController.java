@@ -2,7 +2,6 @@ package com.microservices.filemetadata.controller;
 
 import com.microservices.filemetadata.entity.FileMetadata;
 import com.microservices.filemetadata.service.FileMetadataService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,9 +9,12 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/file-metadata")
-@RequiredArgsConstructor
 public class FileMetadataController {
     private final FileMetadataService service;
+
+    public FileMetadataController(FileMetadataService service) {
+        this.service = service;
+    }
     
     @PostMapping
     public ResponseEntity<FileMetadata> createMetadata(@RequestBody FileMetadata metadata) {

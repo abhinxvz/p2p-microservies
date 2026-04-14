@@ -10,18 +10,13 @@ spring:
         locator:
           enabled: true
           lower-case-service-id: true
-      globalcors:
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins: "*"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
-            allowedHeaders: "*"
       routes:
+        - id: file-transfer-ws
+          uri: lb:ws://file-transfer-service
+          predicates:
+            - Path=/file-transfer/ws, /file-transfer/ws/**
+          filters:
+            - StripPrefix=1
         - id: user-service
           uri: lb://user-service
           predicates:
@@ -37,7 +32,7 @@ spring:
         - id: file-transfer-service
           uri: lb://file-transfer-service
           predicates:
-            - Path=/api/transfers/**,/api/peers/**,/ws/**
+            - Path=/api/transfers/**,/api/peers/**
           filters:
             - AuthenticationFilter
         - id: auth-service
@@ -50,8 +45,14 @@ spring:
             - Path=/peers/**,/network/**
           filters:
             - AuthenticationFilter
+        - id: file-metadata-service
+          uri: lb://file-metadata-service
+          predicates:
+            - Path=/api/file-metadata/**
+          filters:
+            - AuthenticationFilter
 
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://service-registry:8761/eureka/

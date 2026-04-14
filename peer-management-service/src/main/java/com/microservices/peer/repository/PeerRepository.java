@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface PeerRepository extends JpaRepository<Peer, String> {
     List<Peer> findByStatus(String status);
+    List<Peer> findByUsernameAndStatus(String username, String status);
 }

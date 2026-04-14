@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { fileTransferService, peerService, networkService } from '@/services/api';
+import { networkService } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import AuthForm from './AuthForm';
 import NetworkManager from './NetworkManager';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -21,19 +21,15 @@ export default function FileTransferDashboard() {
   const [targetPeerId, setTargetPeerId] = useState('');
   const [isGroupTransfer, setIsGroupTransfer] = useState(false);
 
-  const { sendToGroup, connectToPeer, connectedPeers, transferProgress: webrtcProgress } = useWebRTC(peerId);
+  const { sendFile, sendToGroup, connectToPeer, connectedPeers, transferProgress: webrtcProgress, incomingRequest, acceptIncomingTransfer } = useWebRTC(peerId);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    // Auto-extract JWT ID for secure WebRTC signaling
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.sub) setPeerId(payload.sub);
-      } catch (e) {}
-    }
+    // Use the sessionId (UUID) as our WebRTC identity — this matches what
+    // peer-management-service stores and what contacts see in sessionIds[]
+    const sessionId = sessionStorage.getItem('peer_session_id');
+    if (sessionId) setPeerId(sessionId);
 
     const fetchPeers = async () => {
       try {
@@ -54,13 +50,31 @@ export default function FileTransferDashboard() {
     fetchPeers();
     const intervalId = setInterval(fetchPeers, 10000);
     return () => clearInterval(intervalId);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, logout]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const [activeTransfer, setActiveTransfer] = useState<any>(null);
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  // Keep local progress in sync with WebRTC progress
+  useEffect(() => {
+    setProgress(webrtcProgress);
+  }, [webrtcProgress]);
+
+  // Resolve a display name for the current target (username or group name)
+  const targetDisplayName = (() => {
+    if (!targetPeerId) return '';
+    if (isGroupTransfer) {
+      const g = activeGroups.find((g: any) => String(g.id) === targetPeerId);
+      return g ? `Mesh: ${g.name}` : targetPeerId;
+    }
+    const contact = activeContacts.find((c: any) =>
+      c.sessionIds && c.sessionIds.includes(targetPeerId)
+    );
+    return contact ? contact.username : targetPeerId;
+  })();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,40 +84,29 @@ export default function FileTransferDashboard() {
     }
   };
 
+  // Reset transferProgress in hook when starting a new transfer
   const handleInitiateTransfer = async () => {
     if (!selectedFile || !targetPeerId) return;
     try {
       setActiveTransfer({ fileName: selectedFile.name, fileSize: selectedFile.size });
       setUploadSuccess(false);
+      setIsUploading(true);
+      setProgress(0);
 
       if (isGroupTransfer) {
-        setIsUploading(true);
         await sendToGroup(parseInt(targetPeerId), selectedFile);
-        setIsUploading(false);
-        setUploadSuccess(true);
       } else {
-        setIsUploading(true);
-        await connectToPeer(targetPeerId);
-        // In a full implementation, you wait for channel to open and stream
-        setTimeout(() => {
-          setIsUploading(false);
-          setUploadSuccess(true);
-        }, 1500);
+        await sendFile(targetPeerId, selectedFile);
       }
+
+      setIsUploading(false);
+      setUploadSuccess(true);
     } catch (err) {
-      console.error('Transfer Init Failed', err);
+      console.error('Transfer failed', err);
       setIsUploading(false);
     }
   };
 
-  const simulateUploadChunk = async () => {
-    // For legacy fallback if WebRTC isn't clicked
-    setIsUploading(true);
-    setTimeout(() => {
-        setIsUploading(false);
-        setUploadSuccess(true);
-    }, 1000);
-  };
 
   const resetShare = () => {
     setSelectedFile(null);
@@ -124,6 +127,33 @@ export default function FileTransferDashboard() {
           Logout Securely
         </Button>
       </div>
+
+      {/* ── Incoming Transfer Banner ─────────────────────────────────────── */}
+      {incomingRequest && (
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/40 px-6 py-4 shadow-lg shadow-blue-100 dark:shadow-none animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="shrink-0 w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <UploadCloud className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-blue-800 dark:text-blue-200 leading-tight">
+                Incoming File Request
+              </p>
+              <p className="text-sm text-blue-600 dark:text-blue-400 truncate">
+                <span className="font-semibold">{incomingRequest.peerId}</span> wants to send you{' '}
+                <span className="font-semibold">&quot;{incomingRequest.metadata?.fileName ?? 'a file'}&quot;</span>
+              </p>
+            </div>
+          </div>
+          <Button
+            id="accept-incoming-transfer-btn"
+            onClick={acceptIncomingTransfer}
+            className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl px-5 py-2 shadow-md shadow-blue-200 dark:shadow-none transition-all hover:-translate-y-0.5"
+          >
+            Accept File
+          </Button>
+        </div>
+      )}
 
       <NetworkManager />
 
@@ -147,6 +177,8 @@ export default function FileTransferDashboard() {
             <div className="space-y-3">
               <label className="text-sm font-bold text-slate-700 dark:text-zinc-300">Select Peer/Group to Send to</label>
               <select 
+                aria-label="Select peer or group to send file to"
+                title="Select peer or group"
                 value={isGroupTransfer ? `g-${targetPeerId}` : (targetPeerId ? `c-${targetPeerId}` : '')} 
                 onChange={e => {
                   const val = e.target.value;
@@ -163,9 +195,13 @@ export default function FileTransferDashboard() {
                 <option value="" disabled>Select an active contact or group...</option>
                 <optgroup label="Online Contacts">
                   {activeContacts.map(c => (
-                    <option key={`c-${c.peerId}`} value={`c-${c.peerId}`}>
-                      {c.peerId}
-                    </option>
+                    c.sessionIds && c.sessionIds.length > 0
+                      ? c.sessionIds.map((sid: string) => (
+                          <option key={`c-${sid}`} value={`c-${sid}`}>
+                            {c.username} {c.sessionIds.length > 1 ? `(tab ${c.sessionIds.indexOf(sid) + 1})` : ''}
+                          </option>
+                        ))
+                      : null
                   ))}
                 </optgroup>
                 <optgroup label="Your Mesh Groups">
@@ -183,7 +219,7 @@ export default function FileTransferDashboard() {
             className={`border-[3px] border-dashed rounded-3xl p-10 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${selectedFile ? 'bg-primary/5 dark:bg-primary/10 border-primary' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800 border-zinc-300 dark:border-zinc-700 hover:border-zinc-400'}`}
             onClick={() => fileInputRef.current?.click()}
           >
-            <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+            <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileChange} aria-label="Choose a file to share" title="Choose a file to share" />
             {selectedFile ? (
               <div className="animate-in zoom-in duration-300">
                 <File className="w-16 h-16 text-primary mb-4 mx-auto dark:drop-shadow-none" />
@@ -218,7 +254,7 @@ export default function FileTransferDashboard() {
              <CardTitle className="text-2xl font-black flex items-center gap-2">
                Sending Journey
              </CardTitle>
-             <CardDescription className="text-base mt-2 font-medium">Watch your file travel to {targetPeerId || 'your friend'}.</CardDescription>
+             <CardDescription className="text-base mt-2 font-medium">Watch your file travel to {targetDisplayName || 'your friend'}.</CardDescription>
           </div>
           <CardContent className="p-8">
             {!activeTransfer ? (
@@ -234,10 +270,10 @@ export default function FileTransferDashboard() {
                        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Sending</p>
                        <h3 className="font-bold text-2xl truncate max-w-[250px]">{activeTransfer.fileName}</h3>
                      </div>
-                     <span className="text-2xl font-black text-blue-600">{webrtcProgress > 0 ? webrtcProgress : progress}%</span>
+                     <span className="text-2xl font-black text-blue-600">{progress}%</span>
                    </div>
                    
-                   <Progress value={webrtcProgress > 0 ? webrtcProgress : progress} className="h-4 rounded-full bg-slate-100" />
+                   <Progress value={progress} className="h-4 rounded-full bg-slate-100" />
                    
                    {!uploadSuccess ? (
                      <Button 
@@ -257,7 +293,7 @@ export default function FileTransferDashboard() {
                          <CheckCircle2 className="w-10 h-10 text-[#09090b]" />
                        </div>
                        <h4 className="font-black text-xl text-primary">Sent Successfully!</h4>
-                       <p className="text-zinc-600 dark:text-zinc-400 font-medium">Your friend {targetPeerId} can now receive it safely.</p>
+                       <p className="text-zinc-600 dark:text-zinc-400 font-medium">Your friend {targetDisplayName} can now receive it safely.</p>
                        
                        <Button variant="outline" className="mt-4 rounded-xl border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800" onClick={resetShare}>
                          Share another

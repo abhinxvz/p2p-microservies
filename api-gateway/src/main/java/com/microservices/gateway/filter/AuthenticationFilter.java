@@ -31,7 +31,7 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
             String path = exchange.getRequest().getURI().getPath();
 
             // Whitelist /auth/** and /eureka/** paths
-            if (path.startsWith("/auth/") || path.startsWith("/eureka/")) {
+            if (path.startsWith("/auth/") || path.startsWith("/eureka/") || path.startsWith("/file-transfer/ws")) {
                 return chain.filter(exchange);
             }
 

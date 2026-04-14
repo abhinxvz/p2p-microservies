@@ -9,30 +9,25 @@ import java.time.LocalDateTime;
 @Table(name = "peers")
 public class Peer {
     @Id
-    private String peerId;
-    private String ipAddress;
-    private int port;
+    private String sessionId;
+    private String username;
     private String status; // e.g., ACTIVE, INACTIVE
     private LocalDateTime lastSeen;
 
     public Peer() {}
 
-    public Peer(String peerId, String ipAddress, int port, String status) {
-        this.peerId = peerId;
-        this.ipAddress = ipAddress;
-        this.port = port;
+    public Peer(String sessionId, String username, String status) {
+        this.sessionId = sessionId;
+        this.username = username;
         this.status = status;
         this.lastSeen = LocalDateTime.now();
     }
 
-    public String getPeerId() { return peerId; }
-    public void setPeerId(String peerId) { this.peerId = peerId; }
-    
-    public String getIpAddress() { return ipAddress; }
-    public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+    public String getSessionId() { return sessionId; }
+    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
 
-    public int getPort() { return port; }
-    public void setPort(int port) { this.port = port; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

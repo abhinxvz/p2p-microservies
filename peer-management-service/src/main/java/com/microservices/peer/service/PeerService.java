@@ -19,8 +19,8 @@ public class PeerService {
         return repository.save(peer);
     }
 
-    public void deregisterPeer(String peerId) {
-        repository.findById(peerId).ifPresent(peer -> {
+    public void deregisterPeer(String sessionId) {
+        repository.findById(sessionId).ifPresent(peer -> {
             peer.setStatus("INACTIVE");
             repository.save(peer);
         });
@@ -28,5 +28,9 @@ public class PeerService {
 
     public List<Peer> getActivePeers() {
         return repository.findByStatus("ACTIVE");
+    }
+
+    public List<Peer> getActiveSessionsForUser(String username) {
+        return repository.findByUsernameAndStatus(username, "ACTIVE");
     }
 }

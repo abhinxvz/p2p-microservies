@@ -19,10 +19,10 @@ public class PeerController {
         return ResponseEntity.ok(service.registerPeer(peer));
     }
 
-    @DeleteMapping("/{peerId}/deregister")
-    public ResponseEntity<String> deregisterPeer(@PathVariable String peerId) {
-        service.deregisterPeer(peerId);
-        return ResponseEntity.ok("Peer deregistered successfully");
+    @DeleteMapping("/{sessionId}/deregister")
+    public ResponseEntity<String> deregisterPeer(@PathVariable String sessionId) {
+        service.deregisterPeer(sessionId);
+        return ResponseEntity.ok("Peer session deregistered successfully");
     }
 
     @GetMapping("/active")

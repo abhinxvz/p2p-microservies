@@ -16,12 +16,14 @@ public class Contact {
     
     private String userId;
     private String contactUserId;
+    private String status; // PENDING, ACCEPTED, REJECTED
 
     public Contact() {}
 
-    public Contact(String userId, String contactUserId) {
+    public Contact(String userId, String contactUserId, String status) {
         this.userId = userId;
         this.contactUserId = contactUserId;
+        this.status = status;
     }
 
     public Long getId() { return id; }
@@ -32,4 +34,7 @@ public class Contact {
 
     public String getContactUserId() { return contactUserId; }
     public void setContactUserId(String contactUserId) { this.contactUserId = contactUserId; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }

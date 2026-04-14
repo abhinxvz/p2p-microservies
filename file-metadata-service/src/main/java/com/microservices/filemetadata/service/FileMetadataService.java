@@ -2,7 +2,6 @@ package com.microservices.filemetadata.service;
 
 import com.microservices.filemetadata.entity.FileMetadata;
 import com.microservices.filemetadata.repository.FileMetadataRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,10 +9,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class FileMetadataService {
     private final FileMetadataRepository repository;
-    
+
+    public FileMetadataService(FileMetadataRepository repository) {
+        this.repository = repository;
+    }
+
     public FileMetadata createMetadata(FileMetadata metadata) {
         if (metadata.getFileId() == null) {
             metadata.setFileId(UUID.randomUUID().toString());
