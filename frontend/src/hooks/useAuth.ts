@@ -1,15 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { authService, peerService } from '../services/api';
 import { v4 as uuidv4 } from 'uuid';
-
-function extractUsernameFromToken(token: string): string | null {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.sub || null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Returns a stable, per-tab sessionId.
@@ -67,14 +58,15 @@ export function useAuth() {
   const login = async (username: string, password: string) => {
     try {
       const data = await authService.authLogin(username, password);
-      window.dispatchEvent(new Event('authStatusChange'));
-      // Auto-register as an active peer immediately after login
+      // Register peer FIRST so the user is visible as online before UI refreshes
       const sessionId = getOrCreateSessionId();
       try {
         await peerService.registerPeer(username, sessionId);
       } catch (e) {
         console.warn('Peer registration failed (may already be registered)', e);
       }
+      // Dispatch AFTER peer is registered so NetworkManager sees the user as online
+      window.dispatchEvent(new Event('authStatusChange'));
       return { success: true, data };
     } catch (error: any) {
       console.error('Login error', error);

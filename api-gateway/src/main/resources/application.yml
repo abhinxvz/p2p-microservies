@@ -14,7 +14,7 @@ spring:
         - id: file-transfer-ws
           uri: lb:ws://file-transfer-service
           predicates:
-            - Path=/file-transfer/ws/**
+            - Path=/file-transfer/ws, /file-transfer/ws/**
           filters:
             - StripPrefix=1
         - id: user-service

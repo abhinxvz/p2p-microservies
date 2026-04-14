@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { networkService, peerService } from '@/services/api';
+import { networkService } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -212,6 +212,7 @@ export default function NetworkManager() {
             <div className="flex flex-wrap gap-2">
               {contacts.map(c => (
                 <button 
+                  type="button"
                   key={c.username}
                   onClick={() => toggleGroupSelection(c.username)}
                   className={`text-xs px-3 py-1.5 rounded-full font-bold transition-colors flex items-center gap-1 ${
